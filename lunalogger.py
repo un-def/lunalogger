@@ -16,8 +16,8 @@ class Path:
 
     registered = {}
 
-    @staticmethod
-    def add(pattern):
+    @classmethod
+    def add(self, pattern):
         """ pattern format:
             {var_name[:type][:length]}
 
@@ -46,13 +46,13 @@ class Path:
                 pattern_regexp = re.sub('\{([^:]+?)(:([sd])(:([0-9,]+))?)?\}', pattern2re, pattern) + '/?'
             else:
                 pattern_regexp = '/'
-            __class__.registered[pattern_regexp] = call_object
+            self.registered[pattern_regexp] = call_object
             return call_object
         return add_decorator
 
-    @staticmethod
-    def check(path):
-        for pattern_regexp, call_object in __class__.registered.items():
+    @classmethod
+    def check(self, path):
+        for pattern_regexp, call_object in self.registered.items():
             match = re.fullmatch(pattern_regexp, path)
             if match:
                 return (call_object, match.groupdict())
