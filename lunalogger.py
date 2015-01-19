@@ -8,10 +8,6 @@ import pymysql
 import template
 import settings
 
-###
-import time
-###
-
 class Path:
 
     registered = {}
@@ -77,7 +73,6 @@ class LoggerApp:
     )
 
     def __init__(self, environ, start_response):
-        self._time = time.time()
         self.environ = environ
         self.start = start_response
 
@@ -97,9 +92,6 @@ class LoggerApp:
         else:
             self.headers.append(('Content-type', 'text/html; charset=utf-8'))
         self.start(self.status, self.headers)
-        ###
-        yield '<!-- wasted {0:.6f} s -->\n'.format(time.time() - self._time)
-        ###
         if not self.plain:
             if self.title != '':
                 title = self.title + ' :: ' + __class__.title_sitename
@@ -112,9 +104,6 @@ class LoggerApp:
             yield el.encode('utf-8')
         if not self.plain:
             yield template.make_foot(self.linkify, self.js_for_logpage).encode('utf-8')
-        ###
-        yield '<!-- wasted {0:.6f} s -->\n'.format(time.time() - self._time)
-        ###
 
     def db_connect(self):
         self.conn = pymysql.connect(**settings.db)
@@ -237,19 +226,22 @@ class LoggerApp:
                 except ValueError:
                     req_body_size = 0
                 req_body = self.environ['wsgi.input'].read(req_body_size).decode()
-                post_data = urllib.parse.parse_qs(req_body, encoding=settings.post_encoding, errors='replace')
+                try:   # отлавливаем сообщения в юникоде
+                    post_data = urllib.parse.parse_qs(req_body, encoding='utf-8', errors='strict')
+                except UnicodeDecodeError:
+                    post_data = urllib.parse.parse_qs(req_body, encoding=settings.post_encoding, errors='replace')
                 try:
-                    user = post_data['user'][0]
                     time = int(post_data['time'][0])
-                    message = post_data['message'][0]
                     me = int(post_data['me'][0])
-                    token = post_data['token'][0]
+                    if post_data['token'][0] != settings.token: raise ValueError
+                    user = post_data['user'][0]
+                    message = post_data['message'][0]
                 except (KeyError, ValueError):
-                    pass
+                    self.response.append('error')
                 else:
-                    if token == settings.token:
-                        self.db_connect()
-                        self.cur.execute('INSERT INTO `users` SET `nick`=%s, `message_count`=1 ON DUPLICATE KEY UPDATE `user_id`=LAST_INSERT_ID(`user_id`), `message_count`=`message_count`+1;', user);
-                        self.cur.execute('INSERT INTO `chat` (`time`, `user`, `message`, `me`) VALUES (%s, LAST_INSERT_ID(), %s, %s);', (time, message, me));
+                    self.db_connect()
+                    self.cur.execute('INSERT INTO `users` SET `nick`=%s, `message_count`=1 ON DUPLICATE KEY UPDATE `user_id`=LAST_INSERT_ID(`user_id`), `message_count`=`message_count`+1;', user);
+                    self.cur.execute('INSERT INTO `chat` (`time`, `user`, `message`, `me`) VALUES (%s, LAST_INSERT_ID(), %s, %s);', (time, message, me))
+                    self.response.append('OK')
         else:
             self.error_404()

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# 0.2.2-py3
 head = '''<!DOCTYPE html>
 <html lang="ru">
   <head>
