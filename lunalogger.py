@@ -178,7 +178,7 @@ class LoggerApp:
         for position, top_user in enumerate(self.cur.fetchall(), 1):
             top_users.append(template.users_row.format(position, '/users/' + urllib.parse.quote_plus(top_user[0]), cgi.escape(top_user[0]), top_user[1], top_user[1]/total_messages))
         self.navbar = (__class__.default_navbar, 'users')
-        self.response.append(template.users.format(total_users, ''.join(top_users)))
+        self.response.append(template.users.format(total_users, total_messages, ''.join(top_users)))
 
     @Path.add('/users/{nick}')
     def user_info(self, nick):
