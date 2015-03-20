@@ -119,6 +119,15 @@ class LoggerApp:
         self.navbar = (__class__.default_navbar, )
         self.response.append(template.error_404)
 
+    def get_user(self, nick):
+        if not self.conn:
+            self.db_connect()
+        user = self.cur.execute('SELECT `user_id`, `nick`, `message_count` FROM `users` WHERE `nick`=%s;', nick)
+        if user:
+            return self.cur.fetchone()
+        else:
+            return False
+
     def make_log(self, log_from, log_to, nick=None, user_id=None):
         if nick:
             query, params = 'SELECT `time`, `message`, `me` FROM `chat` WHERE `user`=%s AND `time` BETWEEN %s AND %s ORDER BY `message_id` ASC;', (user_id, log_from, log_to)
@@ -132,6 +141,11 @@ class LoggerApp:
             log.append(template.log_line.format(numb, datetime.datetime.fromtimestamp(message_tuple[0]), nick_formatted, cgi.escape(message_tuple[1])))
         return ''.join(log)
 
+    def make_datetime(self, year, month, day):
+        try:
+            return datetime.datetime(int(year), int(month), int(day))
+        except ValueError:
+            return False
 
     @Path.add('/')
     def main(self):
@@ -147,9 +161,8 @@ class LoggerApp:
 
     @Path.add('/log/{year:d:4}/{month:d:2}/{day:d:2}')
     def log(self, year, month, day):
-        try:
-            log_date = datetime.datetime(int(year), int(month), int(day))
-        except ValueError:
+        log_date = self.make_datetime(year, month, day)
+        if not log_date:
             self.error_404()
             return
         self.title = template.log_title.format(log_date)
@@ -183,11 +196,11 @@ class LoggerApp:
     @Path.add('/users/{nick}')
     def user_info(self, nick):
         self.db_connect()
-        user_found = self.cur.execute('SELECT `user_id`, `nick`, `message_count` FROM `users` WHERE `nick`=%s;', nick)
-        if user_found:
+        user = self.get_user(nick)
+        if user:
+            user_id, nick, message_count = user
             self.title = template.users_user_title.format(cgi.escape(nick))
             self.linkify = '.bg-info'
-            user_id, nick, message_count = self.cur.fetchone()
             navbar_user = (('user', '/users/' + urllib.parse.quote_plus(nick), cgi.escape(nick)),)
             self.cur.execute('SELECT @first := MIN(`message_id`), @last := MAX(`message_id`) FROM `chat` WHERE `user`=%s;', user_id)
             self.cur.execute('SELECT `time`, `message` FROM `chat` WHERE `message_id`=@first or `message_id`=@last;')
