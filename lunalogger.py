@@ -56,20 +56,22 @@ class Path:
 
 
 class LoggerApp:
-
+    # дефолтные значения
     status = '200 OK'
     plain = False
     title = ''
-    title_sitename = 'lunalogger'
     linkify = None   # селектор, для которого применяется linkify
     js_for_logpage = False   # подключает jquery-штуки для страницы лога (плавная прокрутка, модальные окна)
     conn = None
     navbar = None
-    # (внутреннее имя (чтобы поменить ссылку активной, active=внутреннее имя), url, текст ссылки)
+    # настройки
+    append_slash = True   # редиректить при отсутствии конечного / на url с /
+    title_sitename = 'lunalogger'
     default_navbar = (
+        # (внутреннее имя, url, текст ссылки)
         ('main', '/', 'главная'),
-        ('log', '/log', 'лог'),
-        ('users', '/users', 'пользователи')
+        ('log', '/log/', 'лог'),
+        ('users', '/users/', 'пользователи')
     )
 
     def __init__(self, environ, start_response):
@@ -82,9 +84,12 @@ class LoggerApp:
         path = self.environ['PATH_INFO'].encode('iso-8859-1').decode('utf-8')   # https://code.djangoproject.com/ticket/19468
         make_content = Path.check(path)
         if make_content:
-            make_content[0](self, **make_content[1])
-            if self.conn:
-                self.db_close()
+            if __class__.append_slash and not path.endswith('/'):
+                self.redirect(path + '/', perm=True)
+            else:
+                make_content[0](self, **make_content[1])
+                if self.conn:
+                    self.db_close()
         else:
             self.error_404()
         if self.plain:
@@ -142,7 +147,7 @@ class LoggerApp:
         log = []
         for numb, message_tuple in enumerate(self.cur.fetchall(), 1):   # message_tuple = (time, message, me[, nick])
             current_nick = nick if nick else message_tuple[3]
-            nick_formatted = (template.log_nick_me if message_tuple[2] else template.log_nick_normal).format('/users/' + urllib.parse.quote_plus(current_nick), cgi.escape(current_nick))
+            nick_formatted = (template.log_nick_me if message_tuple[2] else template.log_nick_normal).format('/users/{}/'.format(urllib.parse.quote_plus(current_nick)), cgi.escape(current_nick))
             log.append(template.log_line.format(numb, datetime.datetime.fromtimestamp(message_tuple[0]), nick_formatted, cgi.escape(message_tuple[1])))
         return ''.join(log)
 
@@ -160,7 +165,7 @@ class LoggerApp:
 
     @Path.add('/log')
     def log_redirect(self):
-        self.redirect(datetime.date.today().strftime('/log/%Y/%m/%d'))
+        self.redirect(datetime.date.today().strftime('/log/%Y/%m/%d/'))
 
     @Path.add('/log/{year:d:4}/{month:d:2}/{day:d:2}')
     def log(self, year, month, day):
@@ -176,7 +181,7 @@ class LoggerApp:
         log_to = log_from + 86399
         prev_day = log_date - datetime.timedelta(days=1)
         next_day = log_date + datetime.timedelta(days=1)
-        log_navbar = (('##log-bottom', template.nav_down), ('##log-top', template.nav_up), ('/log/{:%Y/%m/%d}'.format(prev_day), template.nav_left), ('/log/{:%Y/%m/%d}'.format(next_day), template.nav_right))
+        log_navbar = (('##log-bottom', template.nav_down), ('##log-top', template.nav_up), ('/log/{:%Y/%m/%d}/'.format(prev_day), template.nav_left), ('/log/{:%Y/%m/%d}/'.format(next_day), template.nav_right))
         self.navbar = (__class__.default_navbar, 'log', log_navbar)
         log = self.make_log(log_from, log_to)
         self.response.append(template.log.format(log_date, log))
@@ -192,7 +197,7 @@ class LoggerApp:
         self.cur.execute('SELECT `nick`, `message_count` FROM `users` ORDER BY `message_count` DESC LIMIT 100;');
         top_users = []
         for position, top_user in enumerate(self.cur.fetchall(), 1):
-            top_users.append(template.users_row.format(position, '/users/' + urllib.parse.quote_plus(top_user[0]), cgi.escape(top_user[0]), top_user[1], top_user[1]/total_messages))
+            top_users.append(template.users_row.format(position, '/users/{}/'.format(urllib.parse.quote_plus(top_user[0])), cgi.escape(top_user[0]), top_user[1], top_user[1]/total_messages))
         self.navbar = (__class__.default_navbar, 'users')
         self.response.append(template.users.format(total_users, total_messages, ''.join(top_users)))
 
@@ -204,18 +209,18 @@ class LoggerApp:
             user_id, nick, message_count = user
             self.title = template.users_user_title.format(cgi.escape(nick))
             self.linkify = '.bg-info'
-            navbar_user = (('user', '/users/' + urllib.parse.quote_plus(nick), cgi.escape(nick)),)
+            navbar_user = (('user', '/users/{}/'.format(urllib.parse.quote_plus(nick)), cgi.escape(nick)),)
             self.cur.execute('SELECT @first := MIN(`message_id`), @last := MAX(`message_id`) FROM `chat` WHERE `user`=%s;', user_id)
             self.cur.execute('SELECT `time`, `message` FROM `chat` WHERE `message_id`=@first or `message_id`=@last;')
             result = self.cur.fetchone()
             fst_time = datetime.datetime.fromtimestamp(result[0])
             fst_text = result[1]
-            fst_message = template.users_user_info_message.format('/log/{0:%Y/%m/%d}'.format(fst_time), fst_time, fst_text)
+            fst_message = template.users_user_info_message.format('/log/{0:%Y/%m/%d}/'.format(fst_time), fst_time, fst_text)
             if message_count > 1:
                 result = self.cur.fetchone()
                 lst_time = datetime.datetime.fromtimestamp(result[0])
                 lst_text = result[1]
-                lst_message = template.users_user_info_message.format('/log/{0:%Y/%m/%d}'.format(lst_time), lst_time, lst_text)
+                lst_message = template.users_user_info_message.format('/log/{0:%Y/%m/%d}/'.format(lst_time), lst_time, lst_text)
                 messages = template.users_user_info_fst + fst_message + template.users_user_info_lst + lst_message
             else:
                 messages = fst_message
