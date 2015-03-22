@@ -5,5 +5,8 @@ db = {  #'host': 'localhost',
         'database': 'dc_test',
         'charset': 'utf8'
 }
+append_slash = True   # редиректить при отсутствии конечного / на url с /
+title_sitename = 'lunalogger'
+title_separator = ' :: '
 post_encoding = 'windows-1251'
-token = 'verysecrettoken'
+post_token = 'verysecrettoken'

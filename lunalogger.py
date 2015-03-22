@@ -56,7 +56,6 @@ class Path:
 
 
 class LoggerApp:
-    # дефолтные значения
     status = '200 OK'
     plain = False
     title = ''
@@ -64,9 +63,6 @@ class LoggerApp:
     js_for_logpage = False   # подключает jquery-штуки для страницы лога (плавная прокрутка, модальные окна)
     conn = None
     navbar = None
-    # настройки
-    append_slash = True   # редиректить при отсутствии конечного / на url с /
-    title_sitename = 'lunalogger'
     default_navbar = (
         # (внутреннее имя, url, текст ссылки)
         ('main', '/', 'главная'),
@@ -84,7 +80,7 @@ class LoggerApp:
         path = self.environ['PATH_INFO'].encode('iso-8859-1').decode('utf-8')   # https://code.djangoproject.com/ticket/19468
         make_content = Path.check(path)
         if make_content:
-            if __class__.append_slash and not path.endswith('/'):
+            if settings.append_slash and not path.endswith('/'):
                 self.redirect(path + '/', perm=True)
             else:
                 make_content[0](self, **make_content[1])
@@ -99,9 +95,9 @@ class LoggerApp:
         self.start(self.status, self.headers)
         if not self.plain:
             if self.title != '':
-                title = self.title + ' :: ' + __class__.title_sitename
+                title = self.title + settings.title_separator + settings.title_sitename
             else:
-                title = __class__.title_sitename
+                title = settings.title_sitename
             yield template.head.format(title).encode('utf-8')
             if self.navbar:
                 yield template.make_navbar(*self.navbar).encode('utf-8')
@@ -254,7 +250,7 @@ class LoggerApp:
                 try:
                     time = int(post_data['time'][0])
                     me = int(post_data['me'][0])
-                    if post_data['token'][0] != settings.token: raise ValueError
+                    if post_data['token'][0] != settings.post_token: raise ValueError
                     user = post_data['user'][0]
                     message = post_data['message'][0]
                 except (KeyError, ValueError):
