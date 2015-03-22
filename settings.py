@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 db = {  #'host': 'localhost',
         'unix_socket': '/var/run/mysqld/mysqld.sock',
         'user': 'user',

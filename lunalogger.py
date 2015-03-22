@@ -56,6 +56,7 @@ class Path:
 
 
 class LoggerApp:
+
     status = '200 OK'
     plain = False
     title = ''
