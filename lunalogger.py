@@ -119,6 +119,11 @@ class LoggerApp:
         self.navbar = (__class__.default_navbar, )
         self.response.append(template.error_404)
 
+    def redirect(self, url, perm=False):
+        self.status = '301 Moved Permanently' if perm else '302 Found'
+        self.plain = True
+        self.headers.append(('Location', url))
+
     def get_user(self, nick):
         if not self.conn:
             self.db_connect()
@@ -155,9 +160,7 @@ class LoggerApp:
 
     @Path.add('/log')
     def log_redirect(self):
-        self.status = '302 Found'
-        self.plain = True
-        self.headers.append(('Location', datetime.date.today().strftime('/log/%Y/%m/%d')))
+        self.redirect(datetime.date.today().strftime('/log/%Y/%m/%d'))
 
     @Path.add('/log/{year:d:4}/{month:d:2}/{day:d:2}')
     def log(self, year, month, day):
