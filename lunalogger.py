@@ -135,7 +135,25 @@ class LoggerApp:
         else:
             return False
 
-    def make_log(self, log_from, log_to, nick=None, user_id=None):
+    def user_not_found(self, nick):
+        self.status = '404 Not Found'
+        self.title = template.users_user_not_found_title
+        self.navbar = (__class__.default_navbar, 'users')
+        self.response.append(template.users_user_not_found.format(cgi.escape(nick)))
+
+    def check_user(self, nick):
+        ''' shortcut function:
+            user found: return user's info tuple
+            user not found: return False and create user_not_found response
+        '''
+        user = self.get_user(nick)
+        if not user:
+            self.user_not_found(nick)
+        return user
+
+    def make_log(self, log_date, nick=None, user_id=None):
+        log_from = int(log_date.timestamp())
+        log_to = log_from + 86399
         if nick:
             query, params = 'SELECT `time`, `message`, `me` FROM `chat` WHERE `user`=%s AND `time` BETWEEN %s AND %s ORDER BY `message_id` ASC;', (user_id, log_from, log_to)
         else:
@@ -147,6 +165,15 @@ class LoggerApp:
             nick_formatted = (template.log_nick_me if message_tuple[2] else template.log_nick_normal).format('/users/{}/'.format(urllib.parse.quote_plus(current_nick)), cgi.escape(current_nick))
             log.append(template.log_line.format(numb, datetime.datetime.fromtimestamp(message_tuple[0]), nick_formatted, cgi.escape(message_tuple[1])))
         return ''.join(log)
+
+    def make_log_navbar(self, log_date, link_format):
+        prev_day = log_date - datetime.timedelta(days=1)
+        next_day = log_date + datetime.timedelta(days=1)
+        return (    ('##log-bottom', template.nav_down),
+                    ('##log-top', template.nav_up),
+                    (link_format.format(prev_day), template.nav_left),
+                    (link_format.format(next_day), template.nav_right)
+        )
 
     def make_datetime(self, year, month, day):
         try:
@@ -174,13 +201,9 @@ class LoggerApp:
         self.linkify = '.log-message'
         self.js_for_logpage = True
         self.db_connect()
-        log_from = int(log_date.timestamp())
-        log_to = log_from + 86399
-        prev_day = log_date - datetime.timedelta(days=1)
-        next_day = log_date + datetime.timedelta(days=1)
-        log_navbar = (('##log-bottom', template.nav_down), ('##log-top', template.nav_up), ('/log/{:%Y/%m/%d}/'.format(prev_day), template.nav_left), ('/log/{:%Y/%m/%d}/'.format(next_day), template.nav_right))
+        log_navbar = self.make_log_navbar(log_date, '/log/{:%Y/%m/%d}/')
         self.navbar = (__class__.default_navbar, 'log', log_navbar)
-        log = self.make_log(log_from, log_to)
+        log = self.make_log(log_date)
         self.response.append(template.log.format(log_date, log))
 
     @Path.add('/users')
@@ -200,8 +223,7 @@ class LoggerApp:
 
     @Path.add('/users/{nick}')
     def user_info(self, nick):
-        self.db_connect()
-        user = self.get_user(nick)
+        user = self.check_user(nick)
         if user:
             user_id, nick, message_count = user
             self.title = template.users_user_title.format(cgi.escape(nick))
@@ -224,10 +246,6 @@ class LoggerApp:
             user_info = template.users_user_info.format(cgi.escape(nick), message_count, messages)
             self.navbar = (__class__.default_navbar + navbar_user, 'user')
             self.response.append(user_info)
-        else:
-            self.title = template.users_user_not_found_title
-            self.navbar = (__class__.default_navbar, 'users')
-            self.response.append(template.users_user_not_found.format(cgi.escape(nick)))
 
     @Path.add('/api')
     def api(self):
