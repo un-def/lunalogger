@@ -35,9 +35,9 @@ def make_foot(linkify, js_for_logpage=False):   # linkify - селектор; js
           $("#log-modal").modal("hide");
         });
         $(".panel-body").on("click", ".log-linenumber", function() {
-          var message_link = $(location).attr("href").split("#", 1)[0] + "##" + $(this).attr("id");
+          var message_link = $(location).attr('protocol') + "//" + $(location).attr('host') + $(location).attr('pathname') + "##" + $(this).attr("id");
           $("#log-modal-link").attr("href", message_link);
-          $("#log-modal-link").text(message_link);
+          $("#log-modal-link").text(decodeURIComponent(message_link));
           $("#log-modal").modal("show");
         });
       });
