@@ -82,7 +82,7 @@ class LoggerApp:
         make_content = Path.check(path)
         if make_content:
             if settings.append_slash and not path.endswith('/'):
-                self.redirect(path + '/', perm=True)
+                self.redirect(urllib.parse.quote(path, safe='/') + '/', perm=True)
             else:
                 make_content[0](self, **make_content[1])
                 if self.conn:
@@ -162,7 +162,7 @@ class LoggerApp:
         log = []
         for numb, message_tuple in enumerate(self.cur.fetchall(), 1):   # message_tuple = (time, message, me[, nick])
             current_nick = nick if nick else message_tuple[3]
-            nick_formatted = (template.log_nick_me if message_tuple[2] else template.log_nick_normal).format('/users/{}/'.format(urllib.parse.quote_plus(current_nick)), cgi.escape(current_nick))
+            nick_formatted = (template.log_nick_me if message_tuple[2] else template.log_nick_normal).format('/users/{}/'.format(urllib.parse.quote(current_nick)), cgi.escape(current_nick))
             log.append(template.log_line.format(numb, datetime.datetime.fromtimestamp(message_tuple[0]), nick_formatted, cgi.escape(message_tuple[1])))
         return ''.join(log)
 
@@ -217,7 +217,7 @@ class LoggerApp:
         self.cur.execute('SELECT `nick`, `message_count` FROM `users` ORDER BY `message_count` DESC LIMIT 100;');
         top_users = []
         for position, top_user in enumerate(self.cur.fetchall(), 1):
-            top_users.append(template.users_row.format(position, '/users/{}/'.format(urllib.parse.quote_plus(top_user[0])), cgi.escape(top_user[0]), top_user[1], top_user[1]/total_messages))
+            top_users.append(template.users_row.format(position, '/users/{}/'.format(urllib.parse.quote(top_user[0])), cgi.escape(top_user[0]), top_user[1], top_user[1]/total_messages))
         self.navbar = (__class__.default_navbar, 'users')
         self.response.append(template.users.format(total_users, total_messages, ''.join(top_users)))
 
@@ -228,7 +228,6 @@ class LoggerApp:
             user_id, nick, message_count = user
             self.title = template.users_user_title.format(cgi.escape(nick))
             self.linkify = '.bg-info'
-            navbar_user = (('user', '/users/{}/'.format(urllib.parse.quote_plus(nick)), cgi.escape(nick)),)
             self.cur.execute('SELECT @first := MIN(`message_id`), @last := MAX(`message_id`) FROM `chat` WHERE `user`=%s;', user_id)
             self.cur.execute('SELECT `time`, `message` FROM `chat` WHERE `message_id`=@first or `message_id`=@last;')
             result = self.cur.fetchone()
@@ -243,8 +242,9 @@ class LoggerApp:
                 messages = template.users_user_info_fst + fst_message + template.users_user_info_lst + lst_message
             else:
                 messages = fst_message
+            user_navbar = (('user', '/users/{}/'.format(urllib.parse.quote(nick)), cgi.escape(nick)),)
+            self.navbar = (__class__.default_navbar + user_navbar, 'user')
             user_info = template.users_user_info.format(cgi.escape(nick), message_count, messages)
-            self.navbar = (__class__.default_navbar + navbar_user, 'user')
             self.response.append(user_info)
 
     @Path.add('/api')
