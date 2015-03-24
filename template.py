@@ -219,7 +219,9 @@ users_user_log = '''    <div id="log-top" class="container">
           <h3 class="panel-title">Лог сообщений {0} за {1:%d.%m.%Y}</h3>
         </div>
         <div class="panel-body">
+          <ol class="log-ol">
 {2}
+          </ol>
         </div>
       </div>
       <span id="log-bottom"></span>
