@@ -3,8 +3,11 @@
 import traceback, sys
 def application(environ, start_response):
     try:
-        import lunalogger
-        return lunalogger.LoggerApp(environ, start_response)
+        from lunalogger import LoggerApp
+        import middleware
+        import settings
+        app = middleware.PermCache(LoggerApp) if settings.mw_permcache['enabled'] else LoggerApp
+        return app(environ, start_response)
     except:
         status = '500 Internal Server Error'
         response_headers = [('Content-type', 'text/plain; charset=utf-8')]
