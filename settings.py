@@ -13,6 +13,7 @@ title_sitename = 'lunalogger'
 title_separator = ' :: '
 post_encoding = 'windows-1251'
 post_token = 'verysecrettoken'
+pytz_timezone = 'Europe/Moscow'   # None - не использовать pytz
 
 # middleware
 mw_permcache = {'enabled': True,

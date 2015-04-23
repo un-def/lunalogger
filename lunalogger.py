@@ -7,6 +7,11 @@ import cgi
 import pymysql
 import template
 import settings
+if settings.pytz_timezone:
+    import pytz
+    log_tz = pytz.timezone(settings.pytz_timezone)
+else:
+    log_tz = None
 
 class Path:
 
@@ -180,7 +185,7 @@ class LoggerApp:
         for numb, message_tuple in enumerate(self.cur.fetchall(), 1):   # message_tuple = (time, message, me[, nick])
             current_nick = nick if nick else message_tuple[3]
             nick_formatted = (template.log_nick_me if message_tuple[2] else template.log_nick_normal).format('/users/{}/'.format(urllib.parse.quote(current_nick)), cgi.escape(current_nick))
-            log.append(template.log_line.format(numb, datetime.datetime.fromtimestamp(message_tuple[0]), nick_formatted, cgi.escape(message_tuple[1])))
+            log.append(template.log_line.format(numb, datetime.datetime.fromtimestamp(message_tuple[0], tz=log_tz), nick_formatted, cgi.escape(message_tuple[1])))
         return ''.join(log)
 
     def make_log_navbar(self, log_date, link_format):
@@ -194,7 +199,9 @@ class LoggerApp:
 
     def make_datetime(self, year, month, day):
         try:
-            return datetime.datetime(int(year), int(month), int(day))
+            dt = datetime.datetime(int(year), int(month), int(day))
+            if log_tz: dt = log_tz.localize(dt)
+            return dt
         except ValueError:
             return False
 
@@ -206,7 +213,7 @@ class LoggerApp:
 
     @Path.add('/log')
     def log_redirect(self):
-        self.redirect(datetime.date.today().strftime('/log/%Y/%m/%d/'))
+        self.redirect(datetime.datetime.now(tz=log_tz).strftime('/log/%Y/%m/%d/'))
 
     @Path.add('/log/{year:d:4}/{month:d:2}/{day:d:2}')
     def log(self, year, month, day):
@@ -248,12 +255,12 @@ class LoggerApp:
             self.cur.execute('SELECT @first := MIN(`message_id`), @last := MAX(`message_id`) FROM `chat` WHERE `user`=%s;', user_id)
             self.cur.execute('SELECT `time`, `message` FROM `chat` WHERE `message_id`=@first or `message_id`=@last;')
             result = self.cur.fetchone()
-            fst_time = datetime.datetime.fromtimestamp(result[0])
+            fst_time = datetime.datetime.fromtimestamp(result[0], tz=log_tz)
             fst_text = result[1]
             fst_message = template.users_user_info_message.format('/log/{0:%Y/%m/%d}/'.format(fst_time), fst_time, fst_text)
             if message_count > 1:
                 result = self.cur.fetchone()
-                lst_time = datetime.datetime.fromtimestamp(result[0])
+                lst_time = datetime.datetime.fromtimestamp(result[0], tz=log_tz)
                 lst_text = result[1]
                 lst_message = template.users_user_info_message.format('/log/{0:%Y/%m/%d}/'.format(lst_time), lst_time, lst_text)
                 messages = template.users_user_info_fst + fst_message + template.users_user_info_lst + lst_message
@@ -268,7 +275,7 @@ class LoggerApp:
     def user_log_redirect(self, nick):
         user = self.check_user(nick)
         if user:
-            self.redirect('/users/{0}/log/{1:%Y/%m/%d}/'.format(urllib.parse.quote(nick), datetime.date.today()))
+            self.redirect('/users/{0}/log/{1:%Y/%m/%d}/'.format(urllib.parse.quote(nick), datetime.datetime.now(tz=log_tz)))
 
     @Path.add('/users/{nick}/log/{year:d:4}/{month:d:2}/{day:d:2}')
     def user_log(self, nick, year, month, day):
