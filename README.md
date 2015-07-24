@@ -1,7 +1,7 @@
 lunalogger
 ==========
 
-http-логгер чата для [lunadc](https://github.com/un-def/lunadc). Просмотр логов по дням с навигацией и обработкой ссылок, в том числе magnet (TTH), ТОП-100 пользователей по количеству сообщений, страница информации о каждом пользователе.
+http-логгер чата для [lunadc](https://github.com/un-def/lunadc). Просмотр логов по дням с навигацией и обработкой ссылок, в том числе magnet (TTH), ТОП-100 пользователей по количеству сообщений, страница информации о каждом пользователе ([демо](http://dclog.undef.im)).
 
 Версия для Python 3. В качестве БД используется MySQL (с помощью интерфейса [PyMySQL](https://github.com/PyMySQL/PyMySQL)). Фронтэнд — Bootstrap 3 и jQuery 1.11 с плагинами [jquery.arbitrary-anchor.js](https://github.com/briangonzalez/jquery.arbitrary-anchor.js) и [Linkify](https://github.com/SoapBox/jQuery-linkify).
 
