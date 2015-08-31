@@ -65,7 +65,7 @@ class LoggerApp:
     status = '200 OK'
     plain = False
     title = ''
-    linkify = None   # селектор, для которого применяется linkify
+    linkify = False   # включает linkify
     js_for_logpage = False   # подключает jquery-штуки для страницы лога (плавная прокрутка, модальные окна)
     conn = None
     navbar = None
@@ -222,7 +222,7 @@ class LoggerApp:
             self.error_404()
             return
         self.title = template.log_title.format(log_date)
-        self.linkify = '.log-message'
+        self.linkify = True
         self.js_for_logpage = True
         self.db_connect()
         log_navbar = self.make_log_navbar(log_date, '/log/{:%Y/%m/%d}/')
@@ -251,7 +251,7 @@ class LoggerApp:
         if user:
             user_id, nick, message_count = user
             self.title = template.users_user_title.format(cgi.escape(nick))
-            self.linkify = '.bg-info'
+            self.linkify = True
             self.cur.execute('SELECT @first := MIN(`message_id`), @last := MAX(`message_id`) FROM `chat` WHERE `user`=%s;', user_id)
             self.cur.execute('SELECT `time`, `message` FROM `chat` WHERE `message_id`=@first or `message_id`=@last;')
             result = self.cur.fetchone()
@@ -287,7 +287,7 @@ class LoggerApp:
                 return
             user_id, nick, message_count = user
             self.title = template.users_user_log_title.format(nick, log_date)
-            self.linkify = '.log-message'
+            self.linkify = True
             self.js_for_logpage = True
             log_navbar = self.make_log_navbar(log_date, '/users/'+urllib.parse.quote(nick)+'/log/{:%Y/%m/%d}/')
             user_navbar = (('user', '/users/{}/'.format(urllib.parse.quote(nick)), cgi.escape(nick)),)
